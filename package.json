@@ -1,0 +1,59 @@
+{
+	"name": "@saebyn/mastra-s3-vector",
+	"version": "0.1.0",
+	"description": "AWS S3 Vectors integration for Mastra framework - the first cloud storage with native vector support at scale",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": ["dist", "README.md", "LICENSE"],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest",
+		"test:watch": "vitest --watch",
+		"test:coverage": "vitest --coverage",
+		"clean": "rm -rf dist",
+		"prepublishOnly": "npm run clean && npm run build && npm test"
+	},
+	"keywords": [
+		"mastra",
+		"vector",
+		"search",
+		"embedding",
+		"aws",
+		"s3",
+		"ai",
+		"machine-learning",
+		"semantic-search",
+		"rag"
+	],
+	"author": "saebyn <me@saebyn.dev>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/saebyn/mastra-s3-vector.git"
+	},
+	"license": "AGPL-3.0-only",
+	"type": "module",
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"peerDependencies": {
+		"@aws-sdk/client-s3vectors": "^3.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.2.1",
+		"tsx": "^4.20.4",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"dependencies": {
+		"@aws-sdk/client-s3vectors": "^3.864.0"
+	}
+}
