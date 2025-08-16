@@ -163,12 +163,12 @@ const results = await vectorStore.query({
 });
 ```
 
-#### `describeIndex(indexName: string): Promise<IndexStats>`
+#### `describeIndex(params: DescribeIndexParams): Promise<IndexStats>`
 
 Returns information about an index.
 
 ```typescript
-const stats = await vectorStore.describeIndex('my-index');
+const stats = await vectorStore.describeIndex({ indexName: 'my-index' });
 // { dimension: 1536, count: 1000, metric: 'cosine' }
 ```
 
@@ -181,12 +181,12 @@ const indexes = await vectorStore.listIndexes();
 // ['index1', 'index2', 'index3']
 ```
 
-#### `deleteIndex(indexName: string): Promise<void>`
+#### `deleteIndex(params: DeleteIndexParams): Promise<void>`
 
 Deletes an index and all its data.
 
 ```typescript
-await vectorStore.deleteIndex('my-index');
+await vectorStore.deleteIndex({ indexName: 'my-index' });
 ```
 
 #### `updateVector(params: UpdateVectorParams): Promise<void>`

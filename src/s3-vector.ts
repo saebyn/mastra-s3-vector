@@ -190,7 +190,9 @@ export class S3Vector extends MastraVector {
 	/**
 	 * Returns information about the index
 	 *
-	 * @param indexName Name of the index to describe
+	 * @param params Parameters for describing the index
+	 * @param params.indexName Name of the index to describe
+	 * @throws VectorStoreError if the index does not exist or cannot be described
 	 * @returns Index statistics
 	 */
 	async describeIndex(params: DescribeIndexParams): Promise<IndexStats> {
@@ -219,7 +221,8 @@ export class S3Vector extends MastraVector {
 	/**
 	 * Deletes an index and all its data
 	 *
-	 * @param indexName Name of the index to delete
+	 * @param params Parameters for deleting the index
+	 * @param params.indexName Name of the index to delete
 	 */
 	async deleteIndex(params: DeleteIndexParams): Promise<void> {
 		try {
