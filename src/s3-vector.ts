@@ -10,6 +10,12 @@ import type {
 	DeleteVectorParams,
 	VectorMetadata,
 } from "./types.js";
+import { MastraVector } from "@mastra/core";
+import type {
+	DescribeIndexParams,
+	DeleteIndexParams,
+	UpsertVectorParams,
+} from "@mastra/core";
 
 import { VectorStoreError } from "./types.js";
 import {
@@ -29,7 +35,7 @@ import {
  * This class provides vector search capabilities using Amazon S3 Vectors,
  * the first cloud storage with native vector support at scale.
  */
-export class S3Vector {
+export class S3Vector extends MastraVector {
 	private vectorBucketName: string;
 	private client: S3VectorsClient;
 
@@ -40,6 +46,8 @@ export class S3Vector {
 	 * @param vectorBucketName Name of the S3 vector bucket to use
 	 */
 	constructor(config: S3VectorConfig, vectorBucketName: string) {
+		super();
+
 		this.vectorBucketName = vectorBucketName;
 
 		// In a real implementation, this would create the actual AWS S3 Vectors client
@@ -77,21 +85,39 @@ export class S3Vector {
 	 *
 	 * @param params Parameters for upserting vectors
 	 */
-	async upsert(params: UpsertParams): Promise<void> {
+	async upsert(params: UpsertVectorParams): Promise<string[]> {
+		const BATCH_SIZE = 10;
+		// PutVectorsCommand only supports 500 vectors per request, so we need to handle batching
+		// try a smaller batch because I see request size errors with 500 vectors
 		try {
-			const vectors = params.vectors.map((vector, index) => ({
-				key: params.ids?.[index] || `vector_${Date.now()}_${index}`,
-				data: { float32: vector },
-				metadata: params.metadata?.[index],
-			}));
+			for (let i = 0; i < params.vectors.length; i += BATCH_SIZE) {
+				console.log(
+					`Upserting vectors ${i + 1} to ${Math.min(i + BATCH_SIZE, params.vectors.length)} into index ${params.indexName}`,
+				);
+				const batch = params.vectors.slice(i, i + BATCH_SIZE);
+				try {
+					await this.client.send(
+						new PutVectorsCommand({
+							vectorBucketName: this.vectorBucketName,
+							indexName: params.indexName,
+							vectors: batch.map((vector, index) => ({
+								key: params.ids?.[i + index] || `vector_${i + index}`,
+								data: { float32: vector },
+								metadata: params.metadata?.[i + index] || {},
+							})),
+						}),
+					);
+				} catch (error) {
+					throw new VectorStoreError(
+						`Failed to upsert vectors to index ${params.indexName}: ${error instanceof Error ? error.message : String(error)}`,
+						"upsert_failed",
+						error,
+					);
+				}
+			}
 
-			const command = new PutVectorsCommand({
-				vectorBucketName: this.vectorBucketName,
-				indexName: params.indexName,
-				vectors,
-			});
-
-			await this.client.send(command);
+			// Return the IDs of the upserted vectors
+			return params.ids || [];
 		} catch (error) {
 			throw new VectorStoreError(
 				`Failed to upsert vectors to index ${params.indexName}: ${error instanceof Error ? error.message : String(error)}`,
@@ -167,34 +193,23 @@ export class S3Vector {
 	 * @param indexName Name of the index to describe
 	 * @returns Index statistics
 	 */
-	async describeIndex(indexName: string): Promise<IndexStats> {
+	async describeIndex(params: DescribeIndexParams): Promise<IndexStats> {
 		try {
 			const command = new GetIndexCommand({
 				vectorBucketName: this.vectorBucketName,
-				indexName,
+				indexName: params.indexName,
 			});
 
 			const response = await this.client.send(command);
 
 			return {
-				dimension:
-					(response as unknown as { dimension?: number }).dimension || 0,
-				count:
-					(response as unknown as { vectorCount?: number; count?: number })
-						.vectorCount ||
-					(response as unknown as { vectorCount?: number; count?: number })
-						.count ||
-					0,
-				metric: ((
-					response as unknown as { distanceMetric?: string; metric?: string }
-				).distanceMetric ||
-					(response as unknown as { distanceMetric?: string; metric?: string })
-						.metric ||
-					"cosine") as DistanceMetric,
+				dimension: response.index?.dimension || 0,
+				count: 0, // S3 Vectors does not provide count directly
+				metric: response.index?.distanceMetric || "cosine",
 			};
 		} catch (error) {
 			throw new VectorStoreError(
-				`Failed to describe index ${indexName}: ${error instanceof Error ? error.message : String(error)}`,
+				`Failed to describe index ${params.indexName}: ${error instanceof Error ? error.message : String(error)}`,
 				"describe_failed",
 				error,
 			);
@@ -206,17 +221,17 @@ export class S3Vector {
 	 *
 	 * @param indexName Name of the index to delete
 	 */
-	async deleteIndex(indexName: string): Promise<void> {
+	async deleteIndex(params: DeleteIndexParams): Promise<void> {
 		try {
 			const command = new DeleteIndexCommand({
 				vectorBucketName: this.vectorBucketName,
-				indexName,
+				indexName: params.indexName,
 			});
 
 			await this.client.send(command);
 		} catch (error) {
 			throw new VectorStoreError(
-				`Failed to delete index ${indexName}: ${error instanceof Error ? error.message : String(error)}`,
+				`Failed to delete index ${params.indexName}: ${error instanceof Error ? error.message : String(error)}`,
 				"delete_index_failed",
 				error,
 			);
@@ -306,6 +321,21 @@ export class S3Vector {
 				error,
 			);
 		}
+	}
+
+	protected validateExistingIndex(
+		indexName: string,
+		dimension: number,
+		metric: string,
+	): Promise<void> {
+		return this.describeIndex({ indexName }).then((stats) => {
+			if (stats.dimension !== dimension || stats.metric !== metric) {
+				throw new VectorStoreError(
+					`Index ${indexName} already exists with different dimension or metric`,
+					"index_mismatch",
+				);
+			}
+		});
 	}
 
 	/**

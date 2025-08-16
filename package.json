@@ -45,7 +45,8 @@
 		"node": ">=18.0.0"
 	},
 	"peerDependencies": {
-		"@aws-sdk/client-s3vectors": "^3.0.0"
+		"@aws-sdk/client-s3vectors": "^3.0.0",
+		"@mastra/core": "^0.13.0"
 	},
 	"devDependencies": {
 		"@types/node": "^24.2.1",
@@ -54,6 +55,7 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3vectors": "^3.864.0"
+		"@aws-sdk/client-s3vectors": "^3.864.0",
+		"@mastra/core": "^0.13.2"
 	}
 }
