@@ -1,4 +1,4 @@
-# @mastra/s3-vector
+# mastra-s3-vector
 
 AWS S3 Vectors integration for the Mastra AI framework - the first cloud storage with native vector support at scale.
 
